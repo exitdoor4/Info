@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR 정보 조회</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+        }
+        .card { 
+            background: white;
+            border-radius: 16px; 
+            padding: 30px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 500px;
+            width: 100%;
+        }
+        .online { color: #28a745; font-weight: bold; }
+        .offline { color: #6c757d; font-weight: bold; }
+        .board-id { 
+            font-size: 2.5em; 
+            margin: 20px 0; 
+            color: #333; 
+            background: #f0f0f0; 
+            padding: 15px; 
+            border-radius: 8px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+        .sensor-id {
+            font-size: 1.5em; 
+            color: #333; 
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .status-box {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            background: #f8f9fa;
+            text-align: center;
+        }
+        .detail-item {
+            text-align: left;
+            padding: 10px;
+            margin: 10px 0;
+            background: white;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+        }
+        .detail-item strong {
+            color: #667eea;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h2 {
+            color: #667eea;
+            margin-top: 0;
+            text-align: center;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #e0e0e0;
+            margin: 20px 0;
+        }
+        .info-label {
+            color: #666; 
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>📱 QR 정보 조회</h2>
+        <div class="status-box">
+            <div id="status">
+                <div class="spinner"></div>
+                <p>연결 상태 확인 중...</p>
+            </div>
+        </div>
+        <hr>
+        <div id="board-section">
+            <p class="info-label">Board ID:</p>
+            <div id="board-display" class="board-id">대기 중...</div>
+        </div>
+        <div id="sensor-section" style="display: none;">
+            <p class="info-label">Sensor ID:</p>
+            <div id="sensor-id-display" class="sensor-id"></div>
+        </div>
+        <div id="server-data"></div>
+    </div>
+
+    <script>
+        // Flask 서버 주소 (내부망)
+        const INTERNAL_SERVER = 'http://192.168.0.58:5050';
+        
+        const params = new URLSearchParams(window.location.search);
+        const sensorId = params.get('sensor_id');
+        const boardId = params.get('board_id');
+        
+        // 1. Board ID는 즉시 표시 (항상 보임)
+        if (boardId) {
+            document.getElementById('board-display').innerText = boardId;
+        } else {
+            document.getElementById('board-display').innerText = "ID 없음";
+        }
+        
+        // 2. Sensor ID가 있으면 표시
+        if (sensorId) {
+            document.getElementById('sensor-section').style.display = 'block';
+            document.getElementById('sensor-id-display').innerText = sensorId;
+        }
+
+        // 3. 내부 서버 접속 시도 (1.5초 타임아웃)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+
+        if (sensorId) {
+            // 센서 정보 가져오기
+            fetch(`${INTERNAL_SERVER}/api/sensor/${sensorId}`, { signal: controller.signal })
+                .then(response => {
+                    clearTimeout(timeoutId);
+                    if (!response.ok) throw new Error('Not found');
+                    return response.json();
+                })
+                .then(data => {
+                    // 내부망 연결 성공: 상세 정보 표시
+                    document.getElementById('status').innerHTML = "<span class='online'>● 내부망 연결됨</span><p style='font-size: 0.9em; color: #666; margin-top: 5px;'>상세 정보 로드 완료</p>";
+                    document.getElementById('server-data').innerHTML = `
+                        <hr>
+                        <h3 style="color: #667eea; margin-bottom: 15px;">📊 센서 상세 정보</h3>
+                        <div class="detail-item"><strong>센서 이름:</strong> ${data.name}</div>
+                        <div class="detail-item"><strong>이미지 포맷:</strong> ${data.image_format}</div>
+                        <div class="detail-item"><strong>FOV:</strong> ${data.fov}°</div>
+                        <div class="detail-item"><strong>해상도:</strong> ${data.resolution_width}×${data.resolution_height}</div>
+                        <div class="detail-item"><strong>Config File:</strong> ${data.location}</div>
+                        <div class="detail-item"><strong>상태:</strong> <span style="color: ${data.status === 'active' ? '#28a745' : '#dc3545'}">${data.status}</span></div>
+                        ${data.description ? `<div class="detail-item"><strong>설명:</strong> ${data.description}</div>` : ''}
+                    `;
+                })
+                .catch(() => {
+                    clearTimeout(timeoutId);
+                    showExternalMode();
+                });
+        } else if (boardId) {
+            // 보드 정보 가져오기
+            fetch(`${INTERNAL_SERVER}/api/board/${boardId}`, { signal: controller.signal })
+                .then(response => {
+                    clearTimeout(timeoutId);
+                    if (!response.ok) throw new Error('Not found');
+                    return response.json();
+                })
+                .then(data => {
+                    // 내부망 연결 성공: 상세 정보 표시
+                    document.getElementById('status').innerHTML = "<span class='online'>● 내부망 연결됨</span><p style='font-size: 0.9em; color: #666; margin-top: 5px;'>상세 정보 로드 완료</p>";
+                    document.getElementById('server-data').innerHTML = `
+                        <hr>
+                        <h3 style="color: #667eea; margin-bottom: 15px;">💻 보드 상세 정보</h3>
+                        <div class="detail-item"><strong>보드 이름:</strong> ${data.name}</div>
+                        <div class="detail-item"><strong>생성일:</strong> ${data.created_at}</div>
+                    `;
+                })
+                .catch(() => {
+                    clearTimeout(timeoutId);
+                    showExternalMode();
+                });
+        } else {
+            showExternalMode();
+        }
+
+        function showExternalMode() {
+            // 외부 접속: Board ID만 표시
+            document.getElementById('status').innerHTML = "<span class='offline'>○ 외부 접속</span><p style='font-size: 0.9em; color: #666; margin-top: 5px;'>Board ID만 표시됩니다</p>";
+            document.getElementById('server-data').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
