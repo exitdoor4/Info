@@ -110,21 +110,30 @@
     </div>
 
     <script>
-        // Flask 서버 주소 (내부망 - HTTPS)
-        const INTERNAL_SERVER = 'https://192.168.0.58:5050';
+        // Flask 서버 주소 (내부망 - HTTP)
+        const INTERNAL_SERVER = 'http://192.168.0.58:5050';
         
         const params = new URLSearchParams(window.location.search);
-        // 짧은 파라미터 형식: s=sensor_id, b=board_id
+        // 짧은 파라미터 형식: s=sensor_id, b=board_id, sn=sensor_name, bn=board_name
         const sensorId = params.get('s') || params.get('sensor_id');
         const boardId = params.get('b') || params.get('board_id');
+        const sensorName = params.get('sn');
+        const boardName = params.get('bn');
         
-        // 1. ID는 즉시 표시 (외부 접속용)
-        if (sensorId) {
-            // 센서의 경우: ID를 임시로 표시하고, 서버에서 이름 가져오기
+        // 1. 이름을 즉시 표시 (외부 접속용 - URL 파라미터 사용)
+        if (sensorId && sensorName) {
+            // 센서의 경우: URL 파라미터의 센서 이름 표시
             document.getElementById('info-label').innerText = '센서 이름:';
-            document.getElementById('board-display').innerText = `센서 #${sensorId}`;
+            document.getElementById('board-display').innerText = decodeURIComponent(sensorName);
+        } else if (boardId && boardName) {
+            // 보드의 경우: URL 파라미터의 보드 이름 표시
+            document.getElementById('info-label').innerText = 'Board ID:';
+            document.getElementById('board-display').innerText = decodeURIComponent(boardName);
+        } else if (sensorId) {
+            // 이름이 없으면 ID만 표시
+            document.getElementById('info-label').innerText = '센서 ID:';
+            document.getElementById('board-display').innerText = `#${sensorId}`;
         } else if (boardId) {
-            // 보드의 경우: Board ID 표시
             document.getElementById('info-label').innerText = 'Board ID:';
             document.getElementById('board-display').innerText = boardId;
         } else {
@@ -145,8 +154,10 @@
                     return response.json();
                 })
                 .then(data => {
-                    // 내부망 연결 성공: 센서 이름으로 변경하고 상세 정보 표시
-                    document.getElementById('board-display').innerText = data.name;
+                    // 내부망 연결 성공: 센서 이름 업데이트하고 상세 정보 표시
+                    if (!sensorName || decodeURIComponent(sensorName) !== data.name) {
+                        document.getElementById('board-display').innerText = data.name;
+                    }
                     document.getElementById('status').innerHTML = "<span class='online'>● 내부망 연결됨</span><p style='font-size: 0.9em; color: #666; margin-top: 5px;'>상세 정보 로드 완료</p>";
                     document.getElementById('server-data').innerHTML = `
                         <hr>
@@ -194,15 +205,14 @@
         }
 
         function showExternalMode() {
-            // 외부 접속 또는 인증서 미승인: ID만 표시
-            const sensorId = params.get('s') || params.get('sensor_id');
-            const helpText = sensorId 
-                ? `<hr><div style="padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107; margin-top: 15px;">
-                    <p style="margin: 0 0 10px 0; color: #856404; font-size: 0.9em;">
+            // 외부 접속 또는 Mixed Content 차단: 기본 정보만 표시
+            const helpText = (sensorId || boardId)
+                ? `<hr><div style="padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #2196F3; margin-top: 15px;">
+                    <p style="margin: 0 0 10px 0; color: #0d47a1; font-size: 0.9em;">
                         <strong>💡 상세 정보를 보려면:</strong><br>
-                        같은 Wi-Fi에 연결된 상태에서<br>
-                        <a href="https://192.168.0.58:5050/api/sensor/${sensorId}" target="_blank" style="color: #667eea; text-decoration: underline;">이 링크</a>를 클릭하여 인증서를 승인하세요.<br>
-                        <small>(안전하지 않음 경고 → 고급 → 계속 진행)</small>
+                        같은 Wi-Fi에 연결된 상태에서 브라우저 주소창의 🔒 아이콘을 클릭하고<br>
+                        <strong>"안전하지 않은 콘텐츠 허용"</strong>을 선택하세요.<br>
+                        <small style="color: #666;">(Mixed Content 차단 우회 - HTTP 서버 접근 허용)</small>
                     </p>
                     <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">다시 시도</button>
                 </div>`
