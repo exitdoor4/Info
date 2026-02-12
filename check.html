@@ -103,12 +103,8 @@
         </div>
         <hr>
         <div id="board-section">
-            <p class="info-label">Board ID:</p>
+            <p class="info-label" id="info-label">정보:</p>
             <div id="board-display" class="board-id">대기 중...</div>
-        </div>
-        <div id="sensor-section" style="display: none;">
-            <p class="info-label">Sensor ID:</p>
-            <div id="sensor-id-display" class="sensor-id"></div>
         </div>
         <div id="server-data"></div>
     </div>
@@ -122,22 +118,23 @@
         const sensorId = params.get('s') || params.get('sensor_id');
         const boardId = params.get('b') || params.get('board_id');
         
-        // 1. Board ID는 즉시 표시 (항상 보임)
-        if (boardId) {
+        // 1. ID는 즉시 표시 (외부 접속용)
+        if (sensorId) {
+            // 센서의 경우: ID를 임시로 표시하고, 서버에서 이름 가져오기
+            document.getElementById('info-label').innerText = '센서 이름:';
+            document.getElementById('board-display').innerText = `센서 #${sensorId}`;
+        } else if (boardId) {
+            // 보드의 경우: Board ID 표시
+            document.getElementById('info-label').innerText = 'Board ID:';
             document.getElementById('board-display').innerText = boardId;
         } else {
+            document.getElementById('info-label').innerText = '정보:';
             document.getElementById('board-display').innerText = "ID 없음";
         }
-        
-        // 2. Sensor ID가 있으면 표시
-        if (sensorId) {
-            document.getElementById('sensor-section').style.display = 'block';
-            document.getElementById('sensor-id-display').innerText = sensorId;
-        }
 
-        // 3. 내부 서버 접속 시도 (1.5초 타임아웃)
+        // 2. 내부 서버 접속 시도 (3초 타임아웃)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
 
         if (sensorId) {
             // 센서 정보 가져오기
@@ -148,12 +145,13 @@
                     return response.json();
                 })
                 .then(data => {
-                    // 내부망 연결 성공: 상세 정보 표시
+                    // 내부망 연결 성공: 센서 이름으로 변경하고 상세 정보 표시
+                    document.getElementById('board-display').innerText = data.name;
                     document.getElementById('status').innerHTML = "<span class='online'>● 내부망 연결됨</span><p style='font-size: 0.9em; color: #666; margin-top: 5px;'>상세 정보 로드 완료</p>";
                     document.getElementById('server-data').innerHTML = `
                         <hr>
                         <h3 style="color: #667eea; margin-bottom: 15px;">📊 센서 상세 정보</h3>
-                        <div class="detail-item"><strong>센서 이름:</strong> ${data.name}</div>
+                        <div class="detail-item"><strong>센서 ID:</strong> ${data.id}</div>
                         <div class="detail-item"><strong>이미지 포맷:</strong> ${data.image_format}</div>
                         <div class="detail-item"><strong>FOV:</strong> ${data.fov}°</div>
                         <div class="detail-item"><strong>해상도:</strong> ${data.resolution_width}×${data.resolution_height}</div>
@@ -162,8 +160,9 @@
                         ${data.description ? `<div class="detail-item"><strong>설명:</strong> ${data.description}</div>` : ''}
                     `;
                 })
-                .catch(() => {
+                .catch(err => {
                     clearTimeout(timeoutId);
+                    console.error('서버 연결 실패:', err);
                     showExternalMode();
                 });
         } else if (boardId) {
@@ -180,12 +179,14 @@
                     document.getElementById('server-data').innerHTML = `
                         <hr>
                         <h3 style="color: #667eea; margin-bottom: 15px;">💻 보드 상세 정보</h3>
+                        <div class="detail-item"><strong>보드 ID:</strong> ${data.id}</div>
                         <div class="detail-item"><strong>보드 이름:</strong> ${data.name}</div>
                         <div class="detail-item"><strong>생성일:</strong> ${data.created_at}</div>
                     `;
                 })
-                .catch(() => {
+                .catch(err => {
                     clearTimeout(timeoutId);
+                    console.error('서버 연결 실패:', err);
                     showExternalMode();
                 });
         } else {
@@ -193,8 +194,8 @@
         }
 
         function showExternalMode() {
-            // 외부 접속: Board ID만 표시
-            document.getElementById('status').innerHTML = "<span class='offline'>○ 외부 접속</span><p style='font-size: 0.9em; color: #666; margin-top: 5px;'>Board ID만 표시됩니다</p>";
+            // 외부 접속: ID만 표시
+            document.getElementById('status').innerHTML = "<span class='offline'>○ 외부 접속</span><p style='font-size: 0.9em; color: #666; margin-top: 5px;'>기본 정보만 표시됩니다</p>";
             document.getElementById('server-data').innerHTML = '';
         }
     </script>
