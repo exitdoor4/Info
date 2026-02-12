@@ -118,8 +118,9 @@
         const INTERNAL_SERVER = 'http://192.168.0.58:5050';
         
         const params = new URLSearchParams(window.location.search);
-        const sensorId = params.get('sensor_id');
-        const boardId = params.get('board_id');
+        // 짧은 파라미터 형식: s=sensor_id, b=board_id
+        const sensorId = params.get('s') || params.get('sensor_id');
+        const boardId = params.get('b') || params.get('board_id');
         
         // 1. Board ID는 즉시 표시 (항상 보임)
         if (boardId) {
