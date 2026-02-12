@@ -110,8 +110,8 @@
     </div>
 
     <script>
-        // Flask 서버 주소 (내부망 - HTTP)
-        const INTERNAL_SERVER = 'http://192.168.0.58:5050';
+        // Flask 서버 주소 (내부망 - HTTPS)
+        const INTERNAL_SERVER = 'https://192.168.0.58:5050';
         
         const params = new URLSearchParams(window.location.search);
         // 짧은 파라미터 형식: s=sensor_id, b=board_id, sn=sensor_name, bn=board_name
@@ -205,16 +205,17 @@
         }
 
         function showExternalMode() {
-            // 외부 접속 또는 Mixed Content 차단: 기본 정보만 표시
+            // 외부 접속 또는 인증서 미승인: 기본 정보만 표시
             const helpText = (sensorId || boardId)
-                ? `<hr><div style="padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #2196F3; margin-top: 15px;">
-                    <p style="margin: 0 0 10px 0; color: #0d47a1; font-size: 0.9em;">
+                ? `<hr><div style="padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107; margin-top: 15px;">
+                    <p style="margin: 0 0 10px 0; color: #856404; font-size: 0.9em;">
                         <strong>💡 상세 정보를 보려면:</strong><br>
-                        같은 Wi-Fi에 연결된 상태에서 브라우저 주소창의 🔒 아이콘을 클릭하고<br>
-                        <strong>"안전하지 않은 콘텐츠 허용"</strong>을 선택하세요.<br>
-                        <small style="color: #666;">(Mixed Content 차단 우회 - HTTP 서버 접근 허용)</small>
+                        같은 Wi-Fi에 연결된 상태에서 아래 링크를 클릭하여<br>
+                        인증서를 승인하세요 (최초 1회만)<br>
+                        <small style="color: #666;">(안전하지 않음 경고 → 고급 → 계속 진행)</small>
                     </p>
-                    <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">다시 시도</button>
+                    <a href="${INTERNAL_SERVER}/api/sensor/${sensorId || boardId}" target="_blank" style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; text-decoration: none; border-radius: 4px;">인증서 승인하기</a>
+                    <button onclick="location.reload()" style="margin-left: 10px; padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">다시 시도</button>
                 </div>`
                 : '';
             
