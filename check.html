@@ -194,9 +194,22 @@
         }
 
         function showExternalMode() {
-            // 외부 접속: ID만 표시
+            // 외부 접속 또는 인증서 미승인: ID만 표시
+            const sensorId = params.get('s') || params.get('sensor_id');
+            const helpText = sensorId 
+                ? `<hr><div style="padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107; margin-top: 15px;">
+                    <p style="margin: 0 0 10px 0; color: #856404; font-size: 0.9em;">
+                        <strong>💡 상세 정보를 보려면:</strong><br>
+                        같은 Wi-Fi에 연결된 상태에서<br>
+                        <a href="https://192.168.0.58:5050/api/sensor/${sensorId}" target="_blank" style="color: #667eea; text-decoration: underline;">이 링크</a>를 클릭하여 인증서를 승인하세요.<br>
+                        <small>(안전하지 않음 경고 → 고급 → 계속 진행)</small>
+                    </p>
+                    <button onclick="location.reload()" style="margin-top: 10px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">다시 시도</button>
+                </div>`
+                : '';
+            
             document.getElementById('status').innerHTML = "<span class='offline'>○ 외부 접속</span><p style='font-size: 0.9em; color: #666; margin-top: 5px;'>기본 정보만 표시됩니다</p>";
-            document.getElementById('server-data').innerHTML = '';
+            document.getElementById('server-data').innerHTML = helpText;
         }
     </script>
 </body>
